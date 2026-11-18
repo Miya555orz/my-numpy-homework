@@ -1,0 +1,123 @@
+% 深圳大学实验报告 - Project 1
+% 上传Overleaf后请选择XeLaTeX编译。
+\documentclass[a4paper,11pt]{ctexart}
+\setCJKmainfont{SimSun}[BoldFont=SimSun]
+\setCJKsansfont{SimSun}[BoldFont=SimSun]
+\setCJKmonofont{SimSun}
+\usepackage[left=1.8cm,right=1.8cm,top=1.8cm,bottom=1.8cm]{geometry}
+\usepackage{booktabs,array,xcolor,hyperref,fancyhdr,tikz,listings}
+\usetikzlibrary{positioning}
+\hypersetup{colorlinks=true,urlcolor=blue}
+\definecolor{SZUBlue}{HTML}{005BAC}
+\definecolor{CodeBg}{HTML}{F7F9FC}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{深圳大学实验报告 | Python程序设计}
+\rfoot{第 \thepage 页}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.25em}
+\lstset{basicstyle=\ttfamily\small,backgroundcolor=\color{CodeBg},frame=single,
+  breaklines=true,columns=fullflexible}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{1.2cm}
+{\Huge\bfseries 深\quad 圳\quad 大\quad 学\quad 实\quad 验\quad 报\quad 告\par}
+\vspace{1.2cm}
+{\Large\color{SZUBlue}\bfseries Project 1: NumPy图像编码器\par}
+\vspace{0.4cm}
+{\small OpenCLIP ViT-B-32 Image Encoder Forward in NumPy\par}
+\vspace{1.4cm}
+\renewcommand{\arraystretch}{1.8}
+\begin{tabular}{>{\bfseries}p{3cm}p{9cm}}
+课程名称 & Python程序设计\\\hline
+项目名称 & NumPy图像编码器\\\hline
+学院 & 人工智能学院\\\hline
+专业 & 人工智能\\\hline
+指导教师 & 樊超\\\hline
+报告人 & 郑心而\\\hline
+学号 & 2025300053\\\hline
+实验时间 & 2026.11.17 - 2026.11.18\\\hline
+提交时间 & 2026.11.18\\\hline
+\end{tabular}
+\vfill
+\textbf{代码仓库：}\url{https://github.com/Miya555orz/my-numpy-homework}
+\vspace{1cm}
+\par 教务处制
+\end{titlepage}
+
+\section{实验目标}
+只使用NumPy完成OpenCLIP ViT-B-32图像编码器前向计算，将输入
+$[B,3,224,224]$ 转换为每张图的512维单位向量，并在给定容差内匹配独立FP32参考。
+
+\section{方法与张量维度}
+\begin{center}
+\begin{tikzpicture}[node distance=0.7cm, every node/.style={draw=SZUBlue,rounded corners,fill=blue!5,minimum height=1cm,font=\small}]
+\node (a) {图像 $[B,3,224,224]$};
+\node[right=of a] (b) {Patch $[B,49,3072]$};
+\node[right=of b] (c) {Token $[B,50,768]$};
+\node[below=of c] (d) {12层Block};
+\node[left=of d] (e) {CLS $[B,768]$};
+\node[left=of e] (f) {输出 $[B,512]$};
+\draw[->] (a)--(b);\draw[->] (b)--(c);\draw[->] (c)--(d);
+\draw[->] (d)--(e);\draw[->] (e)--(f);
+\end{tikzpicture}
+\end{center}
+
+图像块构造过程中的张量维度变化如下：
+\[
+[B,3,224,224]\rightarrow[B,3,7,32,7,32]
+\rightarrow[B,7,7,3,32,32]\rightarrow[B,49,3072].
+\]
+轴置换使图像块按行优先顺序排列，并保持块内通道、高度和宽度的展开顺序。
+
+\section{关键实现}
+多头注意力将768维特征划分为12个64维注意力头，分别计算缩放点积注意力，
+随后合并各头输出。每个Transformer模块包含两次残差连接，前馈网络的中间维度为3072。
+\begin{lstlisting}[language=Python]
+k_transpose = k.transpose(0, 1, 3, 2)
+scores = (q @ k_transpose) / np.sqrt(np.float32(head_dim))
+context = attention_weights(scores) @ v
+merged = context.transpose(0, 2, 1, 3).reshape(B, N, 768)
+\end{lstlisting}
+
+\subsection{维度错误及修正}
+初始实现若沿用二维示例中的\texttt{k.T}，会反转四维键张量的全部轴，
+导致批次维度与注意力头维度错位。修正后采用\texttt{transpose(0,1,3,2)}，
+仅交换最后两个轴，使注意力分数的维度为$[B,H,N,N]$。
+注意力与前馈网络的线性权重采用$[out,in]$布局，计算时需要转置；
+最终投影矩阵\texttt{visual.proj}采用$[in,out]$布局，计算时保持原方向。
+
+\newpage
+\section{实验结果}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+阶段 & 输出shape & 最大绝对误差 & 平均绝对误差\\
+\midrule
+preprocess & (10,3,224,224) & 0.000e+00 & 0.000e+00\\
+patches & (2,49,3072) & 0.000e+00 & 0.000e+00\\
+tokens & (2,50,768) & 4.005e-05 & 1.289e-06\\
+block0 & (2,50,768) & 7.063e-06 & 3.250e-07\\
+last\_tokens & (2,50,768) & 4.768e-05 & 2.696e-06\\
+output & (10,512) & 5.439e-07 & 8.311e-08\\
+batch & (3,512) & 4.619e-07 & 7.632e-08\\
+\bottomrule
+\end{tabular}
+\end{center}
+各阶段数值检查均通过。最终输出的最大绝对误差为$5.439\times10^{-7}$，
+小于该阶段的绝对容差$2\times10^{-5}$。乱序及重复样本的批次检查通过，
+表明输出能够对应输入样本的实际顺序。
+
+\section{讨论与总结}
+张量维度管理是实现正确性的关键。图像块构造改变数据排列方式，
+多头注意力对特征轴进行拆分与重组，残差连接则保持模块输入与输出维度一致。
+逐阶段比较可定位误差首次出现的位置。实现中的主要性能开销来自给定的精确GELU函数，
+其逐元素标量计算限制了运行速度；该限制不影响数值检查结果。
+
+\vfill
+\noindent\textbf{复现命令：}\texttt{python check.py --stage all}。
+
+\end{document}

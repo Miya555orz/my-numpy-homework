@@ -1,0 +1,18 @@
+# Python缓存
+__pycache__/
+*.py[cod]
+
+# 本地运行输出
+output_tokens.npz
+my_tokens.npz
+tmp/
+
+# 课程提供的大型参数和参考答案，不提交到GitHub
+weights/
+assets/reference_outputs.npz
+
+# LaTeX临时文件
+report/*.aux
+report/*.log
+report/*.out
+report/*.synctex.gz
