@@ -4,6 +4,10 @@ def angles_to(query, X):
     #np.array 默认会复制输入数据，而 np.asarray 在输入已是 ndarray 且 dtype 不变时不会复制，而是返回原数组的引用。
     query=np.asarray(query,dtype=float)
     X=np.asarray(X,dtype=float)
+    #零向量没有确定的方向，因此与任何向量的夹角都无定义
+    query_length=np.linalg.norm(query)
+    if query_length==0:
+        raise ValueError("query不能为零向量")
     #向量长度(每一行的欧几里得距离)
     row_lengths=np.linalg.norm(X,axis=1)
     #全为nan的结果数组
@@ -12,7 +16,7 @@ def angles_to(query, X):
     valid=row_lengths!=0
     #X[valid] @ query 会一次计算每个有效行与 query 的点积
     #X[valid] 会只保留不为0的行
-    cosine=(X[valid]@query)/(row_lengths[valid]*np.linalg.norm(query))
+    cosine=(X[valid]@query)/(row_lengths[valid]*query_length)
     #防止浮点数误差
     #>最大值返回最大值，最小值也是
     cosine=np.clip(cosine, -1.0, 1.0)

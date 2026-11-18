@@ -9,7 +9,7 @@ tmp/
 
 # 课程提供的大型参数和参考答案，不提交到GitHub
 weights/
-assets/reference_outputs.npz
+assets/
 
 # LaTeX临时文件
 report/*.aux

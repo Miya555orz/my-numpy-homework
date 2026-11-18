@@ -59,7 +59,7 @@ python run.py --images path/to/a.jpg path/to/b.png --output my_tokens.npz
 
 https://github.com/Miya555orz/my-numpy-homework
 
-本仓库不包含课程提供的 `weights/` 和 `assets/reference_outputs.npz`。运行数值检查时，请把课程原始附件中的这两个文件放回原位置。
+本仓库不包含课程提供的 `weights/` 和整个 `assets/` 目录。运行数值检查时，请把课程原始附件中的这两个目录放回项目根目录。
 
 ## 贡献与辅助说明
 

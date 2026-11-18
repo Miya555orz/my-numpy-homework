@@ -64,7 +64,7 @@ print("mdis=",mdis)
 
 
 print("\n===== NP-E5 把向量变为单位长度 =====")
-def unit_vector_exercise(a):
+def unit_vector(a):
     a=np.array(a,dtype=float)
     length=np.linalg.norm(a)
     if length==0:
@@ -72,7 +72,7 @@ def unit_vector_exercise(a):
     return a/length
 
 a=np.array([-1.20,0.40,0.80])
-result=unit_vector_exercise(a)
+result=unit_vector(a)
 print("a的原向量为：",a)
 print("a的单位向量为：",result)
 print("a的单位向量长度为：",np.linalg.norm(result))

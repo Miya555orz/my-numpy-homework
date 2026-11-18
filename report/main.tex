@@ -84,8 +84,8 @@ merged = context.transpose(0, 2, 1, 3).reshape(B, N, 768)
 \end{lstlisting}
 
 \subsection{维度错误及修正}
-初始实现若沿用二维示例中的\texttt{k.T}，会反转四维键张量的全部轴，
-导致批次维度与注意力头维度错位。修正后采用\texttt{transpose(0,1,3,2)}，
+对四维键张量使用二维示例中的\texttt{k.T}会反转全部轴，
+导致批次维度与注意力头维度错位。因此实现采用\texttt{transpose(0,1,3,2)}，
 仅交换最后两个轴，使注意力分数的维度为$[B,H,N,N]$。
 注意力与前馈网络的线性权重采用$[out,in]$布局，计算时需要转置；
 最终投影矩阵\texttt{visual.proj}采用$[in,out]$布局，计算时保持原方向。
@@ -116,6 +116,15 @@ batch & (3,512) & 4.619e-07 & 7.632e-08\\
 多头注意力对特征轴进行拆分与重组，残差连接则保持模块输入与输出维度一致。
 逐阶段比较可定位误差首次出现的位置。实现中的主要性能开销来自给定的精确GELU函数，
 其逐元素标量计算限制了运行速度；该限制不影响数值检查结果。
+
+\section{问题修正与工作说明}
+复核练习合并文件时，发现E5的函数名为\texttt{unit\_vector\_exercise}，
+与独立题目要求的\texttt{unit\_vector}接口不一致。现已统一函数名及调用处，
+并重新运行练习代码。M1的独立版本原先未拒绝零查询向量，
+现已在分母计算前加入长度检查并抛出\texttt{ValueError}。
+本人负责练习实现、编码器代码核对和结果验证。
+报告整理使用课程提供的starter、检查器及OpenAI Codex辅助；
+数值结果以本地检查器运行输出为依据。
 
 \vfill
 \noindent\textbf{复现命令：}\texttt{python check.py --stage all}。
